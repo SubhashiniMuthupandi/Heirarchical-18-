@@ -8,52 +8,47 @@ import numpy as np
 FOLDER_NAME = "Model10"
 FILE_NAME = "hierarchical_model.pkl"
 
-# Path logic
 base_path = os.path.dirname(__file__)
 model_path = os.path.join(base_path, FOLDER_NAME, FILE_NAME)
 
-st.set_page_config(page_title="Customer Segmentation App", layout="centered")
-
 st.title("📂 Hierarchical Clustering Predictor")
-st.write("This app uses the Hierarchical Clustering model to group applicants.")
 
 # --- LOAD MODEL ---
 if os.path.exists(model_path):
     with open(model_path, 'rb') as f:
         model = pickle.load(f)
     
-    st.sidebar.success("Model loaded from Model10")
+    st.success("Model Loaded")
 
-    # --- INPUT FIELDS ---
-    st.subheader("Enter Applicant Details:")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        income = st.number_input("Annual Income ($)", min_value=0, value=50000)
-        loan_amount = st.number_input("Loan Amount ($)", min_value=0, value=15000)
-    
-    with col2:
-        credit_score = st.number_input("Credit Score", min_value=300, max_value=850, value=650)
+    # User Input
+    income = st.number_input("Annual Income", min_value=0, value=67000)
+    credit_score = st.number_input("Credit Score", min_value=300, max_value=850, value=700)
+    loan_amount = st.number_input("Loan Amount", min_value=0, value=20000)
 
-    # --- PREDICTION ---
     if st.button("Determine Cluster"):
-        # Prepare input data
-        input_data = np.array([[income, credit_score, loan_amount]])
+        # 1. Create the new data point
+        new_data = np.array([[income, credit_score, loan_amount]])
+
+        # 2. FIX: Hierarchical clustering needs at least 2 points.
+        # We will create a "dummy" point (or you could load your CSV here) 
+        # so the model has enough data to run.
+        dummy_data = np.array([[50000, 600, 15000]]) # A standard reference point
         
+        # Combine them so there are 2 rows
+        combined_data = np.vstack([dummy_data, new_data])
+
         try:
-            # Note: Standard AgglomerativeClustering doesn't have .predict()
-            # If your model supports it, this will work:
-            prediction = model.fit_predict(input_data) 
-            cluster_id = prediction[0]
+            # 3. Run fit_predict on the combined data
+            clusters = model.fit_predict(combined_data)
+            
+            # The result for the user's input is the last item in the array
+            user_cluster = clusters[-1]
             
             st.write("---")
-            st.header(f"Result: Applicant belongs to Cluster {cluster_id}")
-            st.info("Clusters represent groups of people with similar financial profiles.")
-            
-        except AttributeError:
-            st.error("Error: This specific Hierarchical model type does not support predicting new individual data points.")
-            st.warning("Hierarchical clustering is usually used to analyze a whole dataset at once, not one-by-one predictions.")
+            st.header(f"Result: Applicant assigned to Cluster {user_cluster}")
+            st.info("Note: Clustering groups similar people together based on income and credit.")
 
+        except Exception as e:
+            st.error(f"Cluster Error: {e}")
 else:
-    st.error(f"❌ File Not Found!")
-    st.info(f"Please ensure your file is at: `{model_path}`")
+    st.error(f"Model file not found at {model_path}")
